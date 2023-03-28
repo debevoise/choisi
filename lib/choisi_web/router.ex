@@ -19,7 +19,7 @@ defmodule ChoisiWeb.Router do
 
     get "/", PageController, :home
 
-    live "/choisi", ChoisiLive
+    live "/choisi/:id", ChoisiLive
   end
 
   # Other scopes may use custom stacks.

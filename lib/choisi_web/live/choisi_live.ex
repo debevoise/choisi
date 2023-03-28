@@ -6,28 +6,33 @@ defmodule ChoisiWeb.ChoisiLive do
     %{x: 50, y: 50}
   end
 
+  # defp live_view_topic(chat_id), do: "chat:#{chat_id}"
+
   @choisiview "choisiview"
   def mount(_params, _session, socket) do
     user = ChoisiWeb.User.create()
     coords = default_coords()
     socket_id = socket.id
 
-    {:ok, _} =
-      Presence.track(
-        self(),
-        @choisiview,
-        socket_id,
-        %{
-          socket_id: socket_id,
-          coords: coords,
-          user: user
-        }
-      )
+    topic = @choisiview
 
-    ChoisiWeb.Endpoint.subscribe(@choisiview)
+    Presence.track(
+      self(),
+      topic,
+      socket_id,
+      %{
+        socket_id: socket_id,
+        coords: coords,
+        user: user
+      }
+    )
+
+    ChoisiWeb.Endpoint.subscribe(topic)
+
+    IO.inspect(Presence.list(topic))
 
     initial_users =
-      Presence.list(@choisiview)
+      Presence.list(topic)
       |> Enum.map(fn {_, data} -> data[:metas] |> List.first() end)
 
     {:ok,
@@ -61,27 +66,16 @@ defmodule ChoisiWeb.ChoisiLive do
     {:noreply, socket}
   end
 
-  def handle_info(%{event: "presence_diff", payload: payload}, socket) do
+  def handle_params(%{"id" => id}, _uri, socket) do
+    IO.puts("handle_params: #{id}")
+    {:noreply, socket |> assign(:chat_id, id)}
+  end
+
+  def handle_info(%{event: "presence_diff", payload: _payload}, socket) do
     users =
       Presence.list(@choisiview)
       |> Enum.map(fn {_, data} -> data[:metas] |> List.first() end)
 
-    IO.inspect(payload)
-
     {:noreply, socket |> assign(:users, users) |> assign(:socket_id, socket.id)}
-  end
-
-  @spec render(any) :: Phoenix.LiveView.Rendered.t()
-  def render(assigns) do
-    ~H"""
-    <section id="main-content" phx-hook="TrackClientCursor">
-      <h1>Name: <%= @user.name %></h1>
-      <%= for user <- @users do %>
-        <div style={"position: absolute; color: #{user.user.color}; left: #{user.coords.x}%; top: #{user.coords.y}%; "}>
-          <%= user.user.name %>
-        </div>
-      <% end %>
-    </section>
-    """
   end
 end

@@ -1,0 +1,11 @@
+<section id="main-content" phx-hook="TrackClientCursor">
+  <h1>Name: <%= @user.name %></h1>
+  <ul>
+    <li
+      :for={user <- @users}
+      style={"position: absolute; color: #{user.user.color}; left: #{user.coords.x}%; top: #{user.coords.y}%; "}
+    >
+      <%= user.user.name %>
+    </li>
+  </ul>
+</section>
