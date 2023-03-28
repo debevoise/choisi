@@ -12,6 +12,7 @@ defmodule Choisi.Application do
       ChoisiWeb.Telemetry,
       # Start the PubSub system
       {Phoenix.PubSub, name: Choisi.PubSub},
+      ChoisiWeb.Presence,
       # Start Finch
       {Finch, name: Choisi.Finch},
       # Start the Endpoint (http/https)

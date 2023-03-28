@@ -29,8 +29,11 @@ let Hooks = {};
 Hooks.TrackClientCursor = {
   mounted() {
     document.addEventListener('mousemove', (e) => {
-      const x = (e.pageX / window.innerWidth) * 100; // in %
-      const y = (e.pageY / window.innerHeight) * 100; // in %
+      const toPercent = (num, denom) => Math.round((num / denom) * 1000) / 10;
+
+      // rounded to the nearest 10th of a percent
+      const x = toPercent(e.pageX, window.innerWidth); // in %
+      const y = toPercent(e.pageY, window.innerHeight); // in %
       this.pushEvent('cursor-move', { x, y });
     });
   }

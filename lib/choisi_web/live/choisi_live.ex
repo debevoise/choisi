@@ -1,20 +1,40 @@
 defmodule ChoisiWeb.ChoisiLive do
+  alias ChoisiWeb.Presence
   use ChoisiWeb, :live_view
 
-  def mount(_params, _session, socket) do
-    {:ok,
-     socket
-     |> assign(:user, ChoisiWeb.User.create())
-     |> assign(:coords, %{x: 50, y: 50})
-     |> assign(:clicked, false)}
+  defp default_coords do
+    %{x: 50, y: 50}
   end
 
-  def handle_event("cursor-move", %{"x" => x, "y" => y}, socket) do
-    updated =
-      socket
-      |> assign(:coords, %{x: x, y: y})
+  @choisiview "choisiview"
+  def mount(_params, _session, socket) do
+    user = ChoisiWeb.User.create()
+    coords = default_coords()
+    socket_id = socket.id
 
-    {:noreply, updated}
+    {:ok, _} =
+      Presence.track(
+        self(),
+        @choisiview,
+        socket_id,
+        %{
+          socket_id: socket_id,
+          coords: coords,
+          user: user
+        }
+      )
+
+    ChoisiWeb.Endpoint.subscribe(@choisiview)
+
+    initial_users =
+      Presence.list(@choisiview)
+      |> Enum.map(fn {_, data} -> data[:metas] |> List.first() end)
+
+    {:ok,
+     socket
+     |> assign(:socket_id, socket_id)
+     |> assign(:user, user)
+     |> assign(:users, initial_users)}
   end
 
   def handle_event("mousedown", _event, socket) do
@@ -27,23 +47,41 @@ defmodule ChoisiWeb.ChoisiLive do
     {:noreply, updated}
   end
 
-  def handle_event("mouseup", _event, socket) do
-    updated =
-      socket
-      |> assign(:clicked, false)
+  def handle_event("cursor-move", %{"x" => x, "y" => y}, socket) do
+    key = socket.id
+    payload = %{coords: %{x: x, y: y}}
 
-    {:noreply, updated}
+    metas =
+      Presence.get_by_key(@choisiview, key)[:metas]
+      |> List.first()
+      |> Map.merge(payload)
+
+    Presence.update(self(), @choisiview, key, metas)
+
+    {:noreply, socket}
+  end
+
+  def handle_info(%{event: "presence_diff", payload: payload}, socket) do
+    users =
+      Presence.list(@choisiview)
+      |> Enum.map(fn {_, data} -> data[:metas] |> List.first() end)
+
+    IO.inspect(payload)
+
+    {:noreply, socket |> assign(:users, users) |> assign(:socket_id, socket.id)}
   end
 
   @spec render(any) :: Phoenix.LiveView.Rendered.t()
   def render(assigns) do
     ~H"""
-    <main id="main-content" phx-hook="TrackClientCursor">
+    <section id="main-content" phx-hook="TrackClientCursor">
       <h1>Name: <%= @user.name %></h1>
-      <div style={"position: absolute; color: #{@user.color}; left: #{@coords.x}%; top: #{@coords.y}%; "}>
-        <%= @coords.x %> <%= @coords.y %>
-      </div>
-    </main>
+      <%= for user <- @users do %>
+        <div style={"position: absolute; color: #{user.user.color}; left: #{user.coords.x}%; top: #{user.coords.y}%; "}>
+          <%= user.user.name %>
+        </div>
+      <% end %>
+    </section>
     """
   end
 end
